@@ -6,12 +6,13 @@ import { formatDate, formatINR } from '@/lib/domain/money';
 import { stateLabel } from '@/lib/domain/states';
 import type { Invoice } from '@/lib/domain/types';
 import { amountInWordsINR } from '@/lib/domain/words';
+import { StandardPreview } from './StandardPreview';
 
 const A4_W = 794; // px at 96 dpi
 const A4_H = 1123;
 
 /** On-screen A4 preview (HTML). The downloadable vector PDF is built separately in Phase 4. */
-export function InvoicePreview({ inv, business }: { inv: Invoice; business: Business }) {
+function ClassicPreview({ inv, business }: { inv: Invoice; business: Business }) {
   const wrap = useRef<HTMLDivElement>(null);
   const page = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.6);
@@ -146,3 +147,8 @@ const Party = ({ title, name, addr, gstin, state }: { title: string; name: strin
     {gstin && <div className="font-mono">GSTIN: {gstin}</div>}<div>State: {state}</div>
   </div>
 );
+
+/** The Standard (Indian trade) format is the default; the other templates keep the simpler layout. */
+export function InvoicePreview(props: { inv: Invoice; business: Business }) {
+  return props.business.settings.pdfTemplate === 'Standard' ? <StandardPreview {...props} /> : <ClassicPreview {...props} />;
+}

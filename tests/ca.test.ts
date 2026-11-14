@@ -22,10 +22,10 @@ const owner: Workspace = { business: seed.business, customers: seed.customers, i
 const all = [owner, ...Object.values(clients)];
 
 describe('client businesses', () => {
-  it('are the four fictional clients with valid GSTINs, own series and a state each', () => {
-    expect(all.map((w) => w.business.tradeName)).toEqual(['Shree Sai Electricals', 'Aarambh Interiors', 'Pixel Kraft Media', 'Om Hardware & Sanitary']);
+  it('are the six fictional businesses with valid GSTINs, own series and a state each', () => {
+    expect(all.map((w) => w.business.tradeName)).toEqual(['Shree Sai Electricals', 'Aarambh Interiors', 'Pixel Kraft Media', 'Om Hardware & Sanitary', 'Veer Bright Steels Pvt. Ltd.', 'Aarav Precision Works']);
     for (const w of all) expect(validateGstin(w.business.gstin).valid, w.business.tradeName).toBe(true);
-    expect(new Set(all.map((w) => w.business.seriesPrefix)).size).toBe(4);
+    expect(new Set(all.map((w) => w.business.seriesPrefix)).size).toBe(6);
     expect(new Set(all.map((w) => w.business.stateCode)).size).toBeGreaterThanOrEqual(3);
   });
   it('services clients bill SAC codes; the trader bills goods HSN codes', () => {
@@ -75,11 +75,11 @@ describe('data isolation between businesses', () => {
 
 describe('workspace switching in the store', () => {
   beforeEach(() => { useApp.getState().resetDemo(); useApp.getState().enterOwner(); });
-  it('starts as the owner with the three clients stashed', () => {
+  it('starts as the owner with the five clients stashed', () => {
     const s = useApp.getState();
     expect(s.activeId).toBe(OWNER_ID);
     expect(s.mode).toBe('owner');
-    expect(Object.keys(s.others)).toHaveLength(3);
+    expect(Object.keys(s.others)).toHaveLength(5);
     expect(workspacesOf(s).map((w) => w.business.id)).toEqual(WORKSPACE_ORDER);
   });
   it('switching swaps the whole app context and switching back restores it exactly', () => {
@@ -123,7 +123,7 @@ describe('workspace switching in the store', () => {
     const s = useApp.getState();
     expect(s.mode).toBe('ca');
     expect(s.activeId).toBe(OWNER_ID);
-    expect(Object.keys(s.others)).toHaveLength(3);
+    expect(Object.keys(s.others)).toHaveLength(5);
   });
 });
 
@@ -227,7 +227,7 @@ describe('CA client list and zip', () => {
     const bytes = await buildAllPacks(all, ym, TODAY);
     const zip = await JSZip.loadAsync(bytes);
     const names = Object.keys(zip.files).sort();
-    expect(names).toHaveLength(4);
+    expect(names).toHaveLength(6);
     expect(names.every((n) => n.endsWith('.xlsx') && n.includes(ym))).toBe(true);
     for (const w of all) {
       const file = names.find((n) => n.startsWith(w.business.tradeName.replace(/[^A-Za-z0-9]+/g, '-')))!;

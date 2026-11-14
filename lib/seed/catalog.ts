@@ -19,6 +19,7 @@ export const BUSINESS: Business = {
   seriesPrefix: 'SSE',
   bankName: 'Demo Co-operative Bank',
   bankAccountMasked: 'XXXXXXXX4417',
+  bankBranch: 'Kalyan West Branch',
   ifsc: 'DEMO0001234',
   upiId: 'shreesai@demo',
   signatoryName: 'Ramesh Patil, Partner',
@@ -31,7 +32,7 @@ export const BUSINESS: Business = {
     b2clThreshold: 10_000_000,
     defaultTermsDays: 15,
     demoQrWatermark: true,
-    pdfTemplate: 'Classic',
+    pdfTemplate: 'Standard',
   },
 };
 
@@ -129,7 +130,7 @@ const B2B_NAMES: [string, string, string][] = [
   ['Gokul Electricals', 'Thane', '12, Gokul Arcade, Naupada, Thane West 400602'],
   ['Thane Smart Homes LLP', 'Thane', '4th Floor, Viviana Tower, Eastern Express Highway, Thane 400604'],
   ['Bhiwandi Power Traders', 'Bhiwandi', 'Gala 31, Kalher Godown Complex, Bhiwandi 421302'],
-  ['Mahalaxmi Cables & Wires', 'Bhiwandi', '8, Padgha Road, Bhiwandi 421302'],
+  ['Lakshmi Cables & Wires', 'Bhiwandi', '8, Padgha Road, Bhiwandi 421302'],
   ['Pune Electro Hub', 'Pune', '18, Laxmi Road, Budhwar Peth, Pune 411002'],
   ['Deccan Lighting Solutions', 'Pune', 'Shop 5, FC Road, Shivajinagar, Pune 411004'],
   ['Hinjewadi Projects & Electricals', 'Pune', 'Plot 40, Phase 1, Hinjewadi, Pune 411057'],

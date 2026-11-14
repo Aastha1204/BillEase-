@@ -16,6 +16,7 @@ const SAMPLE: MsgCtx = { firstName: 'Priya', number: 'SSE/26-27/0418', tradeName
 const pick = (b: Business): ProfileFields => ({
   tradeName: b.tradeName, legalName: b.legalName, address: b.address, city: b.city, pincode: b.pincode, gstin: b.gstin, phone: b.phone, email: b.email,
   seriesPrefix: b.seriesPrefix, bankName: b.bankName, bankAccountMasked: b.bankAccountMasked, ifsc: b.ifsc, upiId: b.upiId, signatoryName: b.signatoryName,
+  cin: b.cin ?? '', bankBranch: b.bankBranch ?? '', jurisdiction: b.jurisdiction ?? '', declaration: b.declaration ?? '', termsText: (b.termsAndConditions ?? []).join('\n'), eInvoice: !!b.eInvoice,
 });
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
@@ -178,9 +179,20 @@ function SettingsForm() {
         </div>
       </Section>
 
+      <Section title="Invoice format details" hint="Printed on the Standard (Indian trade) invoice: company details, bank branch, terms and declaration.">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="CIN (companies only)"><input className="input font-mono uppercase" value={f.cin ?? ''} onChange={(e) => set('cin', e.target.value.toUpperCase())} data-testid="s-cin" /></Field>
+          <Field label="Bank branch"><input className="input" value={f.bankBranch ?? ''} onChange={(e) => set('bankBranch', e.target.value)} data-testid="s-branch" /></Field>
+          <Field label="Jurisdiction line" hint="e.g. Subject to Kalyan jurisdiction. Empty = uses your city."><input className="input" value={f.jurisdiction ?? ''} onChange={(e) => set('jurisdiction', e.target.value)} /></Field>
+          <div className="flex items-end"><Toggle on={!!f.eInvoice} onChange={(v) => set('eInvoice', v)} label="Print the e-invoice block (IRN, Ack No., QR)" hint="Demo values only. Nothing is registered on the e-invoice portal." testId="s-einvoice" /></div>
+          <div className="md:col-span-2"><Field label="Terms and conditions of sale (one per line)" hint="Empty = the built-in default terms are printed."><textarea className="input text-xs" rows={5} value={f.termsText ?? ''} onChange={(e) => set('termsText', e.target.value)} placeholder={'Goods once sold will not be taken back.\nInterest @ 24% p.a. will be charged on invoices not paid by the due date.'} data-testid="s-terms" /></Field></div>
+          <div className="md:col-span-2"><Field label="Declaration"><textarea className="input text-xs" rows={2} value={f.declaration ?? ''} onChange={(e) => set('declaration', e.target.value)} placeholder="We declare that this invoice shows the actual price of the goods described and that all particulars are true and correct." /></Field></div>
+        </div>
+      </Section>
+
       <Section title="PDF template">
         <div className="flex flex-wrap gap-3">
-          {(['Classic', 'Modern', 'Minimal'] as const).map((t) => (
+          {(['Standard', 'Classic', 'Modern', 'Minimal'] as const).map((t) => (
             <button key={t} onClick={() => ss('pdfTemplate', t)} aria-pressed={s.pdfTemplate === t} data-testid={`tpl-${t}`}
               className={clsx('rounded-lg border px-4 py-2 text-sm', s.pdfTemplate === t ? 'border-gold bg-gold/15 text-gold' : 'border-mute/30 text-mute')}>{t}</button>
           ))}

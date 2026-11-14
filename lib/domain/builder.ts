@@ -39,6 +39,7 @@ export function applyCustomer(inv: Invoice, c: Customer, business: Business): In
     shipToStateCode: undefined,
     shipToAddress: c.shippingAddress && c.shippingAddress !== c.billingAddress ? c.shippingAddress : undefined,
     dueDate: addDays(inv.date, c.termsDays),
+    meta: { ...inv.meta, paymentTerms: c.termsDays === 0 ? 'Due on receipt' : c.termsDays + ' days' },
   }, business);
 }
 

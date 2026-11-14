@@ -7,6 +7,7 @@ import { computeInvoice, supplyType } from '../domain/tax';
 import type { Invoice, LineInput, Payment } from '../domain/types';
 import type { Workspace } from '../domain/ca';
 import { SSE_SIGNATURE } from './assets';
+import { seedMeta } from './meta';
 import { makeRng, type Rng } from './prng';
 
 const uri = (svg: string) => `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
@@ -21,6 +22,8 @@ interface ClientSpec {
   id: string; trade: string; legal: string; constitution: string; kind: string; address: string; city: string; stateCode: string; pincode: string;
   pan: string; prefix: string; upi: string; bank: string; ifsc: string; acct: string; signatory: string; phone: string; email: string; colors: [string, string];
   items: ItemRow[]; customers: PartySpec[]; invoices: number; services: boolean;
+  /** Trade-format options (all optional). */
+  bankBranch?: string; cin?: string; eInvoice?: boolean; decimals?: boolean; bigQty?: boolean; charges?: boolean; variants?: { grade: string; size: string }[];
 }
 
 const SPECS: ClientSpec[] = [
@@ -74,20 +77,56 @@ const SPECS: ClientSpec[] = [
     ],
     invoices: 22, services: false,
   },
+  {
+    id: 'biz-brightsteel', trade: 'Veer Bright Steels Pvt. Ltd.', legal: 'Veer Bright Steels Private Limited', constitution: 'Private limited company', kind: 'Manufacturer (bright bars)',
+    address: 'Gala 12, Sagar Industrial Estate, Waliv Road, Vasai East', city: 'Vasai', stateCode: '27', pincode: '401208', pan: 'AABCV5521M', prefix: 'VBS', upi: 'veersteels@demo',
+    bank: 'Demo Industrial Bank', ifsc: 'DEMO0005678', acct: 'XXXXXXXX6204', bankBranch: 'Vasai Road', cin: 'U27100MH2015PTC000451', eInvoice: true,
+    signatory: 'Mahesh Naik, Director', phone: '+91 90000 08001', email: 'sales@veersteels.example', colors: ['#BAE6FD', '#6366F1'],
+    items: [['Bright steel bars', '7215', 'Kgs', '118.00', 18, 'Bright bars'], ['Alloy bright bars', '7215', 'Kgs', '132.00', 18, 'Bright bars'],
+      ['Hexagon bright bars', '7215', 'Kgs', '126.00', 18, 'Bright bars'], ['Cold drawn flats', '7215', 'Kgs', '109.00', 18, 'Bright bars']],
+    variants: [{ grade: 'EN1A', size: '5 MM DIA' }, { grade: 'EN1A', size: '6 MM DIA' }, { grade: 'EN8', size: '12 MM DIA' }, { grade: 'EN8', size: '16 MM DIA' }, { grade: 'EN9', size: '20 MM DIA' }, { grade: 'EN24', size: '25 MM DIA' }],
+    customers: [
+      { name: 'Prabhat Precision Components', type: 'B2B', city: 'Thane', stateCode: '27', addr: 'Unit 21, Wagle Industrial Estate, Thane West 400604', terms: 30 },
+      { name: 'Neelkanth Fasteners', type: 'B2B', city: 'Bhiwandi', stateCode: '27', addr: 'Gala 6, Kalher Road, Bhiwandi 421302', terms: 30 },
+      { name: 'Shreyas Tools & Dies', type: 'B2B', city: 'Pune', stateCode: '27', addr: 'Plot 18, Bhosari MIDC, Pune 411026', terms: 45 },
+      { name: 'Harmony Auto Components', type: 'B2B', city: 'Pune', stateCode: '27', addr: 'Gat 112, Chakan Industrial Area, Pune 410501', terms: 30 },
+      { name: 'Zenith Machining Works', type: 'B2B', city: 'Navi Mumbai', stateCode: '27', addr: 'D-44, TTC Industrial Area, Navi Mumbai 400705', terms: 15 },
+    ],
+    invoices: 20, services: false, decimals: true, charges: true,
+  },
+  {
+    id: 'biz-precision', trade: 'Aarav Precision Works', legal: 'Aarav Precision Works (Proprietorship)', constitution: 'Proprietorship', kind: 'Job work / engineering',
+    address: 'Shed 7, Anand Industrial Area, Badlapur MIDC', city: 'Badlapur', stateCode: '27', pincode: '421503', pan: 'AKQPA7730R', prefix: 'APW', upi: 'aaravprecision@demo',
+    bank: 'Demo Co-operative Bank', ifsc: 'DEMO0006789', acct: 'XXXXXXXX3391', bankBranch: 'Badlapur East',
+    signatory: 'Aarav Joshi, Proprietor', phone: '+91 90000 09001', email: 'jobs@aaravprecision.example', colors: ['#FCA5A5', '#F59E0B'],
+    items: [['Machining job work: main shaft', '9988', 'Nos', '4.35', 18, 'Job work'], ['Machining job work: aux shaft', '9988', 'Nos', '4.20', 18, 'Job work'],
+      ['Machining job work: thread pin', '9988', 'Nos', '3.05', 18, 'Job work'], ['Labour charge only (per lot)', '9988', 'Lot', '1850.00', 18, 'Job work']],
+    customers: [
+      { name: 'Crestline Appliances Pvt Ltd', type: 'B2B', city: 'Navi Mumbai', stateCode: '27', addr: 'W-210, TTC Industrial Area, Navi Mumbai 400701', terms: 30 },
+      { name: 'Bluepeak Pumps', type: 'B2B', city: 'Thane', stateCode: '27', addr: 'Shop 5, Kopri Industrial Estate, Thane East 400603', terms: 30 },
+      { name: 'Orion Cycle Components', type: 'B2B', city: 'Pune', stateCode: '27', addr: 'Plot 9, Pimpri MIDC, Pune 411018', terms: 45 },
+      { name: 'Vertex Hydraulics LLP', type: 'B2B', city: 'Bhiwandi', stateCode: '27', addr: 'Gala 14, Purna Road, Bhiwandi 421302', terms: 30 },
+    ],
+    invoices: 16, services: true, bigQty: true, charges: true,
+  },
 ];
+
+const chargeLine = (id: string, label: string, hsn: string, ratePaise: number): LineInput => ({ id, description: label, hsn, qty: 1, unit: 'Job', ratePaise, discount: { kind: 'percent', value: 0 }, gstRate: 18, kind: 'charge' });
 
 const METHODS = ['UPI', 'UPI', 'NEFT/IMPS', 'Cash', 'Cheque'];
 const pan = (rng: Rng) => `${rng.pick(['A', 'B', 'C', 'K'])}${rng.pick(['A', 'B', 'D', 'E'])}${rng.pick(['F', 'C', 'H'])}${rng.pick(['F', 'C', 'P'])}${rng.pick(['A', 'S', 'T'])}${rng.int(1000, 9999)}${rng.pick(['K', 'L', 'M', 'N'])}`;
 
 function build(spec: ClientSpec, today: string): Workspace {
   const rng = makeRng(`billease-demo/${spec.id}`);
+  const metaRng = makeRng(`billease-demo/${spec.id}/meta`); // separate stream: details never shift the main data
   const daysAgo = (n: number) => addDays(today, -n);
   const business: Business = {
     id: spec.id, tradeName: spec.trade, legalName: spec.legal, constitution: spec.constitution, kind: spec.kind, address: spec.address, city: spec.city, stateCode: spec.stateCode,
     pincode: spec.pincode, gstin: makeGstin(spec.stateCode, spec.pan, '1'), phone: spec.phone, email: spec.email, seriesPrefix: spec.prefix, bankName: spec.bank,
     bankAccountMasked: spec.acct, ifsc: spec.ifsc, upiId: spec.upi, signatoryName: spec.signatory,
     logoSvg: monogramSvg(spec.trade.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase(), spec.colors[0], spec.colors[1]), signatureSvg: SSE_SIGNATURE,
-    settings: { roundOff: true, b2cBasis: 'grand', b2cThreshold: 5_000_000, b2clThreshold: 10_000_000, defaultTermsDays: 15, demoQrWatermark: true, pdfTemplate: 'Classic' },
+    settings: { roundOff: true, b2cBasis: 'grand', b2cThreshold: 5_000_000, b2clThreshold: 10_000_000, defaultTermsDays: 15, demoQrWatermark: true, pdfTemplate: 'Standard' },
+    bankBranch: spec.bankBranch ?? `${spec.city} Main Branch`, cin: spec.cin, eInvoice: spec.eInvoice,
   };
   const items: Item[] = spec.items.map((r, i) => ({
     id: `${spec.id}-item-${i + 1}`, name: r[0], hsn: r[1], unit: r[2], category: r[5], caVerified: false,
@@ -118,10 +157,15 @@ function build(spec: ClientSpec, today: string): Workspace {
     const lines: LineInput[] = [...picks].map((ix, k) => {
       const it = items[ix], r = it.rates[0];
       const small = r.ratePaise < 100_000;
-      const qty = ['Job', 'Month', 'Visit', 'Day'].includes(it.unit) ? rng.int(1, cust.type === 'B2C' ? 1 : 3) : small ? rng.int(10, 120) : rng.int(1, 6);
-      return { id: `${id}-l${k + 1}`, description: it.name, hsn: it.hsn, qty, unit: it.unit, ratePaise: r.ratePaise, discount: { kind: 'percent', value: rng.chance(0.15) ? rng.pick([2, 5, 10]) : 0 }, gstRate: r.gstRate };
+      const qty = spec.decimals ? rng.int(150, 6000) / 10 : spec.bigQty && it.unit === 'Nos' ? rng.int(200, 3000) : ['Job', 'Month', 'Visit', 'Day', 'Lot'].includes(it.unit) ? rng.int(1, cust.type === 'B2C' ? 1 : 3) : small ? rng.int(10, 120) : rng.int(1, 6);
+      const v = spec.variants ? rng.pick(spec.variants) : null;
+      return { id: `${id}-l${k + 1}`, description: it.name, hsn: it.hsn, qty, unit: it.unit, ratePaise: r.ratePaise, discount: { kind: 'percent', value: rng.chance(0.15) ? rng.pick([2, 5, 10]) : 0 }, gstRate: r.gstRate, ...(v ? { grade: v.grade, size: v.size, batch: `B${rng.int(1000, 9999)}` } : {}) };
     });
     // keep unregistered buyers under the Rs 50,000 line unless they supply a full address (all do), so this is only a size cap for realism
+    if (spec.charges) {
+      lines.push(chargeLine(`${id}-c1`, 'Loading / Cartage charges on local sales', '996511', 9000));
+      if (rng.chance(0.6)) lines.push(chargeLine(`${id}-c2`, 'Freight charges', '996511', rng.int(2, 8) * 10000));
+    }
     const fy = financialYear(date);
     seq[fy] += 1;
     const supply = supplyType(cust.stateCode, business.stateCode);
@@ -131,6 +175,7 @@ function build(spec: ClientSpec, today: string): Workspace {
       customer: { name: cust.name, address: cust.billingAddress, gstin: cust.gstin, stateCode: cust.stateCode }, isB2B: cust.type === 'B2B', placeOfSupply: cust.stateCode,
       reverseCharge: false, lines, totals, lockedAt: `${date}T10:00:00.000Z`,
     };
+    inv.meta = seedMeta(metaRng, { prefix: spec.prefix, date, termsDays: cust.termsDays, b2b: inv.isB2B, destination: cust.city, seq: seq[fy], bigOrInter: supply === 'inter' || totals.grandTotal > 5_000_000 });
     invoices.push(inv);
     const notDue = inv.dueDate >= today;
     const roll = rng.next();
@@ -143,7 +188,7 @@ function build(spec: ClientSpec, today: string): Workspace {
   return { business, customers, items, invoices, payments, creditNotes: [], counters: { invoice: { ...seq }, creditNote: {} }, auditLog: [], events: [] };
 }
 
-/** The three linked clients other than Shree Sai Electricals. Deterministic for a given `today`. */
+/** The linked clients other than Shree Sai Electricals. Deterministic for a given `today`. */
 export function generateClientWorkspaces(today: string): Record<string, Workspace> {
   return Object.fromEntries(SPECS.map((s) => [s.id, build(s, today)]));
 }

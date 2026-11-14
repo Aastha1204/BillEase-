@@ -120,9 +120,9 @@ describe('store v2', () => {
     expect(m.invoices).toHaveLength(110);
     expect(m.events).toEqual([]);
     expect(m.prospect).toEqual({ name: '', phone: '' });
-    expect(SCHEMA_VERSION).toBe(3);
+    expect(SCHEMA_VERSION).toBe(4);
     expect(m.activeId).toBe('biz-sse');
-    expect(Object.keys(m.others).sort()).toEqual(['biz-aarambh', 'biz-omhardware', 'biz-pixelkraft']);
+    expect(Object.keys(m.others).sort()).toEqual(['biz-aarambh', 'biz-brightsteel', 'biz-omhardware', 'biz-pixelkraft', 'biz-precision']);
     expect(m.mode).toBe('owner');
     expect(migrateState({ nope: 1 }, 1).invoices).toHaveLength(110);
   });

@@ -1,7 +1,7 @@
 'use client';
 import { Command } from 'cmdk';
-import { Plus, Trash2 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { ChevronDown, Plus, Trash2 } from 'lucide-react';
+import { Fragment, useRef, useState } from 'react';
 import { lineFromItem } from '@/lib/domain/builder';
 import type { Item } from '@/lib/domain/entities';
 import { rateOn } from '@/lib/domain/entities';
@@ -45,6 +45,7 @@ function ItemSearch({ date, onAdd, disabled }: { date: string; onAdd: (item: Ite
 export function LineTable({ lines, totals, date, readOnly, onChange }: {
   lines: LineInput[]; totals: InvoiceTotals; date: string; readOnly?: boolean; onChange: (lines: LineInput[]) => void;
 }) {
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const patch = (id: string, p: Partial<LineInput>) => onChange(lines.map((l) => (l.id === id ? { ...l, ...p } : l)));
   const add = (it: Item) => onChange([...lines, lineFromItem(it, date, `l-${Date.now().toString(36)}${lines.length}`)]);
   const addBlank = () => onChange([...lines, { id: `l-${Date.now().toString(36)}${lines.length}`, description: '', hsn: '', qty: 1, unit: 'Pcs', ratePaise: 0, discount: { kind: 'percent', value: 0 }, gstRate: 18 }]);
@@ -63,11 +64,15 @@ export function LineTable({ lines, totals, date, readOnly, onChange }: {
           </thead>
           <tbody>
             {lines.map((l, i) => {
+              if (l.kind === 'charge') return null; // charges live in their own card
               const r = totals.lines[i];
-              const last = i === lines.length - 1;
+              const last = lines.slice(i + 1).every((x) => x.kind === 'charge');
+              const no = lines.slice(0, i).filter((x) => x.kind !== 'charge').length + 1;
+              const hasExtra = !!(l.partNo || l.grade || l.size || l.batch);
               return (
-                <tr key={l.id} className="border-t border-mute/15 align-top" data-testid="line-row">
-                  <td className="px-2 py-2 text-mute num">{i + 1}</td>
+                <Fragment key={l.id}>
+                <tr className="border-t border-mute/15 align-top" data-testid="line-row">
+                  <td className="px-2 py-2 text-mute num">{no}</td>
                   <td className="min-w-52 px-2 py-2"><input className="input" value={l.description} disabled={readOnly} onChange={(e) => patch(l.id, { description: e.target.value })} aria-label={`Description ${i + 1}`} /></td>
                   <td className="w-24 px-2 py-2"><input className="input font-mono" value={l.hsn} disabled={readOnly} inputMode="numeric" onChange={(e) => patch(l.id, { hsn: e.target.value })} aria-label={`HSN ${i + 1}`} /></td>
                   <td className="w-20 px-2 py-2"><NumberInput value={l.qty} disabled={readOnly} onChange={(n) => patch(l.id, { qty: n })} aria-label={`Quantity ${i + 1}`} className="text-right" /></td>
@@ -91,11 +96,30 @@ export function LineTable({ lines, totals, date, readOnly, onChange }: {
                     </select>
                   </td>
                   <td className="num px-2 py-3 text-right font-medium">{r ? formatINR(r.total) : ''}</td>
-                  <td className="px-1 py-2">{!readOnly && <button type="button" className="rounded p-2 text-mute hover:bg-overdue/15 hover:text-overdue" aria-label={`Remove line ${i + 1}`} onClick={() => onChange(lines.filter((x) => x.id !== l.id))}><Trash2 size={16} /></button>}</td>
+                  <td className="whitespace-nowrap px-1 py-2">
+                    <button type="button" className={`rounded p-2 hover:bg-mute/15 ${hasExtra ? 'text-gold' : 'text-mute'}`} aria-label={`More details for line ${no}`} title="Part no., grade, size, batch" aria-expanded={!!open[l.id]}
+                      onClick={() => setOpen((o) => ({ ...o, [l.id]: !o[l.id] }))} data-testid="line-more"><ChevronDown size={16} className={open[l.id] ? 'rotate-180' : ''} /></button>
+                    {!readOnly && <button type="button" className="rounded p-2 text-mute hover:bg-overdue/15 hover:text-overdue" aria-label={`Remove line ${no}`} onClick={() => onChange(lines.filter((x) => x.id !== l.id))}><Trash2 size={16} /></button>}
+                  </td>
                 </tr>
+                {open[l.id] && (
+                  <tr className="bg-mute/5" data-testid="line-details">
+                    <td />
+                    <td colSpan={9} className="px-2 pb-3 pt-1">
+                      <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
+                        {([['partNo', 'Part no.'], ['grade', 'Grade'], ['size', 'Size'], ['batch', 'Batch no.']] as const).map(([k, label]) => (
+                          <label key={k} className="block text-xs text-mute">{label}
+                            <input className="input mt-0.5" value={l[k] ?? ''} disabled={readOnly} onChange={(e) => patch(l.id, { [k]: e.target.value || undefined })} data-testid={`line-${k}`} />
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
-            {!lines.length && <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-mute">No lines yet. Search an item above and press Enter.</td></tr>}
+            {!lines.some((x) => x.kind !== 'charge') && <tr><td colSpan={10} className="px-4 py-8 text-center text-sm text-mute">No lines yet. Search an item above and press Enter.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -6,6 +6,7 @@ import { addDays, createCreditNote, invoiceBalance } from '../domain/payments';
 import { computeInvoice, supplyType } from '../domain/tax';
 import type { CreditNote, Invoice, LineInput, Payment } from '../domain/types';
 import { BUSINESS, buildCustomers, buildItems } from './catalog';
+import { seedMeta } from './meta';
 import { makeRng, type Rng } from './prng';
 
 export const SEED_STRING = 'billease-demo';
@@ -149,6 +150,13 @@ export function generateSeed(today: string): SeedData {
       payments.push({ id: `pay-${inv.id}-1`, invoiceId: inv.id, amount: Math.min(part, total - 10_000), method: rng.pick(METHODS), date: payDate(), reference: `REF${rng.int(100000, 999999)}` });
     }
   });
+
+  // Transport and reference details for every invoice, from a separate PRNG so amounts and dates stay exactly as before.
+  const metaRng = makeRng(SEED_STRING + '/meta');
+  for (const inv of invoices) {
+    const cust = customers.find((c) => c.id === inv.customerId)!;
+    inv.meta = seedMeta(metaRng, { prefix: business.seriesPrefix, date: inv.date, termsDays: cust.termsDays, b2b: inv.isB2B, destination: cust.city, seq: Number(inv.number!.split('/').pop()), bigOrInter: inv.totals.supply === 'inter' || inv.totals.grandTotal > 5_000_000 });
+  }
 
   // Two credit notes against older, unpaid B2B invoices (balance stays positive).
   const cnCounters: Counters = {};

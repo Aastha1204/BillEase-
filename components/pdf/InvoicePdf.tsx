@@ -1,5 +1,7 @@
-import { Document, Font, Image, Page, Path, Rect, StyleSheet, Svg, Text, View } from '@react-pdf/renderer';
-import type { ReactElement } from 'react';
+import { Document, Page, StyleSheet, Text, View, Image } from '@react-pdf/renderer';
+import { registerFonts, Vector } from './shared';
+import { StandardPdf } from './StandardPdf';
+export { registerFonts };
 import type { Business } from '@/lib/domain/entities';
 import { formatDate, formatINR } from '@/lib/domain/money';
 import { stateLabel } from '@/lib/domain/states';
@@ -8,30 +10,12 @@ import { amountInWordsINR } from '@/lib/domain/words';
 
 type Template = Business['settings']['pdfTemplate'];
 
-/**
- * Registers Noto Sans (Regular/SemiBold/Bold). The built-in PDF fonts have no U+20B9 rupee glyph,
- * so this must run before rendering. `base` is '/fonts' in the browser or an absolute dir in Node.
- */
-let registeredBase: string | null = null;
-export function registerFonts(base: string) {
-  if (registeredBase === base) return;
-  Font.register({
-    family: 'NotoSans',
-    fonts: [
-      { src: `${base}/NotoSans-Regular.ttf`, fontWeight: 400 },
-      { src: `${base}/NotoSans-SemiBold.ttf`, fontWeight: 600 },
-      { src: `${base}/NotoSans-Bold.ttf`, fontWeight: 700 },
-    ],
-  });
-  Font.registerHyphenationCallback((w) => [w]); // no mid-word hyphenation
-  registeredBase = base;
-}
 
 const MM = 2.8346;
 const M = 12 * MM; // 12 mm margins
 const CONTENT_W = 595.28 - 2 * M;
 
-const THEMES: Record<Template, { head: string; headFg: string; accent: string; line: string; zebra: string | null; band: string; titleColor: string; rule: number }> = {
+const THEMES: Record<Exclude<Template, 'Standard'>, { head: string; headFg: string; accent: string; line: string; zebra: string | null; band: string; titleColor: string; rule: number }> = {
   Classic: { head: '#1E293B', headFg: '#FFFFFF', accent: '#1E293B', line: '#CBD5E1', zebra: null, band: '#F1F5F9', titleColor: '#0F172A', rule: 2 },
   Modern: { head: '#F5B544', headFg: '#1A1205', accent: '#E8892B', line: '#E7E2D6', zebra: '#FBF8F1', band: '#FFF6E5', titleColor: '#E8892B', rule: 0 },
   Minimal: { head: '#FFFFFF', headFg: '#475569', accent: '#334155', line: '#E2E8F0', zebra: null, band: '#FFFFFF', titleColor: '#334155', rule: 0.5 },
@@ -47,47 +31,16 @@ export interface InvoicePdfProps {
   kind?: 'invoice' | 'credit';
   /** For credit notes: the invoice being credited. */
   against?: { number: string; date: string };
+  /** PNG data URL of the demo e-invoice QR (Standard template only). */
+  eInvQr?: string | null;
 }
 
-/** Pulls <rect>/<path> shapes out of the app's generated SVG data URIs so they can be drawn as vectors. */
-function parseSvg(dataUri: string) {
-  if (!dataUri.startsWith('data:image/svg+xml')) return null;
-  const svg = decodeURIComponent(dataUri.slice(dataUri.indexOf(',') + 1));
-  const vb = /viewBox="([\d.\s-]+)"/.exec(svg)?.[1];
-  if (!vb) return null;
-  const attr = (tag: string, name: string) => new RegExp(`${name}="([^"]*)"`).exec(tag)?.[1];
-  const fix = (c?: string) => (!c || c === 'none' ? undefined : c.startsWith('url(') ? '#F5B544' : c);
-  const shapes: { type: 'rect' | 'path'; tag: string }[] = [];
-  for (const m of svg.matchAll(/<(rect|path)\b[^>]*>/g)) shapes.push({ type: m[1] as 'rect' | 'path', tag: m[0] });
-  return { vb, shapes, attr, fix };
-}
-
-function Vector({ uri, w, h, fallback }: { uri: string; w: number; h: number; fallback: string }): ReactElement {
-  if (/^data:image\/(png|jpe?g)/.test(uri)) return <Image src={uri} style={{ width: w, height: h }} />;
-  const p = parseSvg(uri);
-  if (!p) {
-    return (
-      <View style={{ width: w, height: h, borderRadius: 6, backgroundColor: '#0B1220', alignItems: 'center', justifyContent: 'center' }}>
-        <Text style={{ color: '#F5B544', fontWeight: 700, fontSize: h * 0.34 }}>{fallback}</Text>
-      </View>
-    );
-  }
-  return (
-    <Svg viewBox={p.vb} style={{ width: w, height: h }}>
-      {p.shapes.map((s, i) =>
-        s.type === 'rect'
-          ? <Rect key={i} x={Number(p.attr(s.tag, 'x') ?? 0)} y={Number(p.attr(s.tag, 'y') ?? 0)} width={Number(p.attr(s.tag, 'width'))} height={Number(p.attr(s.tag, 'height'))}
-              rx={Number(p.attr(s.tag, 'rx') ?? 0)} fill={p.fix(p.attr(s.tag, 'fill')) ?? '#000'} />
-          : <Path key={i} d={p.attr(s.tag, 'd') ?? ''} fill={p.fix(p.attr(s.tag, 'fill'))} stroke={p.fix(p.attr(s.tag, 'stroke'))} strokeWidth={Number(p.attr(s.tag, 'stroke-width') ?? 1)} />,
-      )}
-    </Svg>
-  );
-}
 
 const money = (p: number) => formatINR(p, { symbol: false });
 
-export function InvoicePdf({ inv, business, template, qr, balance, kind = 'invoice', against }: InvoicePdfProps) {
+export function InvoicePdf({ inv, business, template, qr, balance, kind = 'invoice', against, eInvQr }: InvoicePdfProps) {
   const tpl = template ?? business.settings.pdfTemplate;
+  if (tpl === 'Standard') return <StandardPdf inv={inv} business={business} qr={qr} balance={balance} kind={kind} against={against} eInvQr={eInvQr} />;
   const th = THEMES[tpl];
   const t = inv.totals;
   const inter = t.supply === 'inter';

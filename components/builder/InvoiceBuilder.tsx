@@ -12,7 +12,9 @@ import { STATE_LIST, stateName } from '@/lib/domain/states';
 import type { Invoice, LineInput } from '@/lib/domain/types';
 import { todayIso, useApp } from '@/lib/store';
 import { Button, Chip, Field, Modal, Toast } from '../ui';
+import { ChargesCard } from './ChargesCard';
 import { ComplianceCard } from './ComplianceCard';
+import { TransportCard } from './TransportCard';
 import { CustomerPicker } from './CustomerPicker';
 import { InvoicePreview } from './InvoicePreview';
 import { LineTable } from './LineTable';
@@ -156,7 +158,9 @@ export function InvoiceBuilder({ initial }: { initial: Invoice }) {
                     {STATE_LIST.map((s) => <option key={s.code} value={s.code}>{s.name} ({s.code})</option>)}
                   </select>
                 </Field>
-                <Field label="Delivery address"><textarea className="input" rows={2} value={inv.shipToAddress ?? ''} disabled={locked} onChange={(e) => edit((p) => ({ ...p, shipToAddress: e.target.value || undefined }))} /></Field>
+                <Field label="Consignee name"><input className="input" value={inv.shipToName ?? ''} disabled={locked} onChange={(e) => edit((p) => ({ ...p, shipToName: e.target.value || undefined }))} data-testid="ship-name" /></Field>
+                <Field label="Consignee GSTIN"><input className="input font-mono uppercase" maxLength={15} value={inv.shipToGstin ?? ''} disabled={locked} onChange={(e) => edit((p) => ({ ...p, shipToGstin: e.target.value.toUpperCase() || undefined }))} data-testid="ship-gstin" /></Field>
+                <div className="md:col-span-2"><Field label="Delivery address (include PIN code)"><textarea className="input" rows={2} value={inv.shipToAddress ?? ''} disabled={locked} onChange={(e) => edit((p) => ({ ...p, shipToAddress: e.target.value || undefined }))} /></Field></div>
               </div>
             </details>
             {shipDiffers && <p className="rounded-lg bg-info/10 p-2 text-xs text-info">Bill-to/ship-to case — confirm place of supply with your CA.</p>}
@@ -164,6 +168,8 @@ export function InvoiceBuilder({ initial }: { initial: Invoice }) {
           </section>
 
           <LineTable lines={inv.lines} totals={inv.totals} date={inv.date} readOnly={locked} onChange={setLines} />
+          <ChargesCard lines={inv.lines} totals={inv.totals} readOnly={locked} onChange={setLines} />
+          <TransportCard meta={inv.meta} readOnly={locked} onChange={(meta) => edit((p) => ({ ...p, meta }))} />
 
           <div className="grid gap-5 lg:grid-cols-2">
             <TaxFlipCard totals={inv.totals} />

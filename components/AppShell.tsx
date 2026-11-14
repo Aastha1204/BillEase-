@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { CA_FIRM } from '@/lib/domain/ca';
-import { useApp, WORKSPACE_ORDER } from '@/lib/store';
+import { useApp } from '@/lib/store';
 import { useHydrated } from '@/lib/store/useHydrated';
 import { usePresenter, useUi } from '@/lib/store/ui';
 import { CommandPalette } from './CommandPalette';
+import { AddBusinessModal } from './business/AddBusinessModal';
 import { PresenterPanel } from './demo/PresenterPanel';
 import { ScriptSpotlight } from './demo/ScriptSpotlight';
 import { Chip } from './ui';
@@ -21,6 +22,7 @@ const NAV = [
   { href: '/reports', label: 'Reports', icon: BarChart3, live: true },
   { href: '/settings', label: 'Settings', icon: Settings, live: true },
 ];
+const ADD = '__add';
 const CLIENTS_NAV = { href: '/ca', label: 'Clients', icon: Briefcase, live: true };
 
 /** Firm monogram for the CA white-label view (drawn, no external image). */
@@ -36,7 +38,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const ready = useHydrated();
-  const { business: biz, mode, activeId, others, enterCa, enterOwner, switchWorkspace } = useApp();
+  const { business: biz, mode, activeId, others, workspaceOrder, enterCa, enterOwner, switchWorkspace } = useApp();
+  const [addOpen, setAddOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const theme = useUi((u) => u.theme);
   const presentation = useUi((u) => u.presentation);
@@ -45,8 +48,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const ca = ready && mode === 'ca';
 
   const clients = useMemo(
-    () => WORKSPACE_ORDER.map((id) => (id === activeId ? biz : others[id]?.business)).filter((b): b is NonNullable<typeof b> => !!b),
-    [activeId, biz, others],
+    () => workspaceOrder.map((id) => (id === activeId ? biz : others[id]?.business)).filter((b): b is NonNullable<typeof b> => !!b),
+    [activeId, biz, others, workspaceOrder],
   );
   const nav = ca ? [CLIENTS_NAV, ...NAV] : NAV;
 
@@ -120,15 +123,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="min-w-0 flex-1">
         <header className="glass sticky top-0 z-40 flex flex-wrap items-center gap-3 border-b px-4 py-3">
-          {ca ? (
-            <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
-              <span className="hidden text-xs text-mute sm:inline">Client</span>
-              <select className="input w-auto max-w-[16rem] truncate !py-1" value={activeId} data-testid="client-switcher" aria-label="Switch client"
-                onChange={(e) => { switchWorkspace(e.target.value); if (path === '/ca') router.push('/dashboard'); }}>
-                {clients.map((b) => <option key={b.id} value={b.id}>{b.tradeName}</option>)}
-              </select>
-            </label>
-          ) : <div className="min-w-0 flex-1 truncate text-sm font-semibold" data-testid="business-name">{ready ? biz.tradeName : ' '}</div>}
+          <label className="flex min-w-0 flex-1 items-center gap-2 text-sm">
+            <span className="hidden text-xs text-mute sm:inline">{ca ? 'Client' : 'Business'}</span>
+            <select className="input w-auto max-w-[18rem] truncate !py-1" value={activeId} data-testid={ca ? 'client-switcher' : 'owner-switcher'} aria-label={ca ? 'Switch client' : 'Switch business'}
+              onChange={(e) => {
+                if (e.target.value === ADD) { setAddOpen(true); return; }
+                switchWorkspace(e.target.value);
+                if (path === '/ca' || path.startsWith('/invoices/')) router.push('/dashboard');
+              }}>
+              {clients.map((b) => <option key={b.id} value={b.id}>{b.tradeName}</option>)}
+              <option value={ADD}>＋ Add new business…</option>
+            </select>
+          </label>
           <div className="flex items-center rounded-lg border border-mute/30 p-0.5" role="group" aria-label="View as">
             <button className={viewBtn(!ca)} aria-pressed={!ca} onClick={() => { enterOwner(); router.push('/dashboard'); }} data-testid="view-owner">Owner</button>
             <button className={viewBtn(ca)} aria-pressed={ca} onClick={() => { enterCa(); router.push('/ca'); }} data-testid="view-ca">CA</button>
@@ -153,7 +159,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
         <main className="p-4 md:p-6">{ready ? children : <div className="text-sm text-mute">Loading your demo data…</div>}</main>
       </div>
-      {ready && <><PresenterPanel /><ScriptSpotlight /><CommandPalette /></>}
+      {ready && <><PresenterPanel /><ScriptSpotlight /><CommandPalette />
+        <AddBusinessModal open={addOpen} onClose={() => setAddOpen(false)} onCreated={(id) => { switchWorkspace(id); router.push(ca ? '/ca' : '/dashboard'); }} /></>}
     </div>
   );
 }

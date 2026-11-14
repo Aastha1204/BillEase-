@@ -35,7 +35,7 @@ export function PdfPreviewModal({ open, onClose, inv, business, balance }: { ope
       <div className="flex flex-wrap items-end gap-4">
         <Field label="Template">
           <select className="input" value={pdfTemplate} onChange={(e) => setSetting({ pdfTemplate: e.target.value as Business['settings']['pdfTemplate'] })} data-testid="pdf-template">
-            {['Classic', 'Modern', 'Minimal'].map((t) => <option key={t}>{t}</option>)}
+            {['Standard', 'Classic', 'Modern', 'Minimal'].map((t) => <option key={t}>{t}</option>)}
           </select>
         </Field>
         <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" checked={demoQrWatermark} onChange={(e) => setSetting({ demoQrWatermark: e.target.checked })} /> Demo watermark under QR</label>

@@ -25,6 +25,14 @@ export interface Business {
   ifsc: string;
   upiId: string;
   signatoryName: string;
+  /** Trade-format extras (all optional; sensible defaults are used when missing). */
+  cin?: string;
+  bankBranch?: string;
+  termsAndConditions?: string[];
+  declaration?: string;
+  jurisdiction?: string;
+  /** Prints the e-invoice block (IRN, Ack No/Date, QR). Demo values only: nothing is registered on the IRP. */
+  eInvoice?: boolean;
   logoSvg: string; // data URI
   signatureSvg: string; // data URI
   settings: {
@@ -34,7 +42,7 @@ export interface Business {
     b2clThreshold: Paise;
     defaultTermsDays: number;
     demoQrWatermark: boolean;
-    pdfTemplate: 'Classic' | 'Modern' | 'Minimal';
+    pdfTemplate: 'Standard' | 'Classic' | 'Modern' | 'Minimal';
     /** Optional overrides for the WhatsApp/email message templates (see messages.ts). */
     templates?: MessageTemplates;
   };

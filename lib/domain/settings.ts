@@ -25,6 +25,8 @@ export const svgTextToDataUri = (svg: string) => `data:image/svg+xml;utf8,${enco
 export interface ProfileFields {
   tradeName: string; legalName: string; address: string; city: string; pincode: string; gstin: string; phone: string; email: string;
   seriesPrefix: string; bankName: string; bankAccountMasked: string; ifsc: string; upiId: string; signatoryName: string;
+  /** Trade-format extras (optional). `termsText` is one term per line. */
+  cin?: string; bankBranch?: string; jurisdiction?: string; declaration?: string; termsText?: string; eInvoice?: boolean;
 }
 
 /** Field-level errors for the business profile; an empty object means it can be saved. */
@@ -55,8 +57,15 @@ export function seriesPreview(prefix: string, fy = '26-27'): SeriesPreview {
 }
 export { MAX_NUMBER_LENGTH };
 
-export const applyProfile = (b: Business, p: ProfileFields): Business => ({
-  ...b, ...p,
-  tradeName: p.tradeName.trim(), legalName: p.legalName.trim(), gstin: validateGstin(p.gstin).normalized,
-  stateCode: validateGstin(p.gstin).stateCode ?? b.stateCode, seriesPrefix: p.seriesPrefix.trim(), upiId: p.upiId.trim(), ifsc: p.ifsc.trim(),
-});
+export function applyProfile(b: Business, p: ProfileFields): Business {
+  const { termsText, ...rest } = p;
+  const terms = (termsText ?? '').split('\n').map((x) => x.trim()).filter(Boolean);
+  return {
+    ...b, ...rest,
+    cin: p.cin?.trim() || undefined, bankBranch: p.bankBranch?.trim() || undefined, jurisdiction: p.jurisdiction?.trim() || undefined, declaration: p.declaration?.trim() || undefined,
+    termsAndConditions: terms.length ? terms : undefined, // empty = use the built-in default terms
+    eInvoice: !!p.eInvoice,
+    tradeName: p.tradeName.trim(), legalName: p.legalName.trim(), gstin: validateGstin(p.gstin).normalized,
+    stateCode: validateGstin(p.gstin).stateCode ?? b.stateCode, seriesPrefix: p.seriesPrefix.trim(), upiId: p.upiId.trim(), ifsc: p.ifsc.trim(),
+  };
+}

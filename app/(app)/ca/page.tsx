@@ -1,5 +1,6 @@
 'use client';
-import { Archive, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet, FolderOpen, XCircle } from 'lucide-react';
+import { Archive, Briefcase, CheckCircle2, ChevronLeft, ChevronRight, FileSpreadsheet, FolderOpen, Plus, XCircle } from 'lucide-react';
+import { AddBusinessModal } from '@/components/business/AddBusinessModal';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 import { Button, Toast } from '@/components/ui';
@@ -25,6 +26,7 @@ export default function ClientsPage() {
   const thisMonth = todayIso().slice(0, 7);
   const [ym, setYm] = useState(thisMonth);
   const [busy, setBusy] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const say = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2800); };
 
@@ -73,6 +75,7 @@ export default function ClientsPage() {
           <input type="month" className="input w-auto" value={ym} max={thisMonth} onChange={(e) => e.target.value && setYm(e.target.value)} aria-label="Month" data-testid="ca-month" />
           <button className="rounded-lg border border-mute/30 p-2 hover:bg-mute/10 disabled:opacity-40" onClick={() => setYm(shift(ym, 1))} disabled={ym >= thisMonth} aria-label="Next month"><ChevronRight size={16} /></button>
         </div>
+        <Button onClick={() => setAdding(true)} data-testid="ca-add-business"><Plus size={16} /> Add business</Button>
         <Button variant="primary" onClick={zipAll} disabled={busy !== null} data-testid="zip-all"><Archive size={16} /> {busy === 'zip' ? 'Building…' : 'Download all client packs (.zip)'}</Button>
       </div>
       <p className="text-xs text-mute">{label(ym)}. You only see the businesses linked to your firm; opening one switches the whole app to that business&apos;s books.</p>
@@ -105,6 +108,7 @@ export default function ClientsPage() {
           </tbody>
         </table>
       </div>
+      <AddBusinessModal open={adding} onClose={() => setAdding(false)} onCreated={(_id, name) => say('Added ' + name + ' to your clients')} />
       <Toast msg={toast} />
     </div>
   );

@@ -12,10 +12,10 @@ import type { Counters } from '../domain/numbering';
 import { generateSeed, type SeedData } from '../seed';
 import { generateClientWorkspaces } from '../seed/clients';
 
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 export const OWNER_ID = 'biz-sse';
 /** Order the businesses appear in the CA view. */
-export const WORKSPACE_ORDER = [OWNER_ID, 'biz-aarambh', 'biz-pixelkraft', 'biz-omhardware'];
+export const WORKSPACE_ORDER = [OWNER_ID, 'biz-aarambh', 'biz-pixelkraft', 'biz-omhardware', 'biz-brightsteel', 'biz-precision'];
 export const STORAGE_KEY = 'billease-demo';
 
 export const todayIso = () => {
@@ -27,7 +27,13 @@ export const todayIso = () => {
  * Top-level fields (business, customers, invoices ...) are always the ACTIVE business. The other linked
  * businesses sit untouched in `others`; switching swaps them atomically, so data never mixes.
  */
-export type AppData = SeedData & { activeId: string; others: Record<string, Workspace>; mode: 'owner' | 'ca' };
+export type AppData = SeedData & {
+  activeId: string; others: Record<string, Workspace>; mode: 'owner' | 'ca';
+  /** Display order of every business (the active one included); new businesses are appended. */
+  workspaceOrder: string[];
+  /** The business the Owner view opens (last one chosen while in Owner view). */
+  ownerId: string;
+};
 
 export interface AppState extends AppData {
   // actions
@@ -53,7 +59,10 @@ export interface AppState extends AppData {
   /** Raises a credit note against an issued invoice (own series, qty limited to what is left to credit). */
   issueCreditNote: (invoiceId: string, input: { reason: string; qtyByLine?: Record<string, number>; date?: string }) => CreditNote;
   enterCa: () => void;
-  enterOwner: () => void;
+  /** Owner view for uid=197609(aasth) gid=197609 groups=197609 (default: the last business used as owner). */
+  enterOwner: (id?: string) => void;
+  /** Adds a new business as its own workspace and links it to the CA list. Returns its id. */
+  addBusiness: (ws: Workspace) => string;
   /** CA view: make a linked client the active business. */
   switchWorkspace: (id: string) => void;
   updateBusiness: (b: Partial<Business>) => void;
@@ -76,13 +85,27 @@ const pickWorkspace = (s: Workspace): Workspace => ({
 /** The business list in a fixed order, with the active one taken from the top level. */
 export function workspacesOf(s: AppData): Workspace[] {
   const all: Record<string, Workspace> = { ...s.others, [s.activeId]: pickWorkspace(s) };
-  return WORKSPACE_ORDER.filter((id) => all[id]).map((id) => all[id]);
+  const order = [...s.workspaceOrder, ...Object.keys(all).filter((id) => !s.workspaceOrder.includes(id))];
+  return order.filter((id) => all[id]).map((id) => all[id]);
 }
 
 const freshAll = (): AppData => {
   const today = todayIso();
-  return { ...generateSeed(today), activeId: OWNER_ID, others: generateClientWorkspaces(today), mode: 'owner' };
+  const others = generateClientWorkspaces(today);
+  return { ...generateSeed(today), activeId: OWNER_ID, others, mode: 'owner', workspaceOrder: [OWNER_ID, ...Object.keys(others)], ownerId: OWNER_ID };
 };
+
+/** v3 -> v4: the new client businesses are added, every business moves to the Standard invoice format, and the order/owner are recorded. */
+function upgradeToV4(s: AppData): AppData {
+  const gen = generateClientWorkspaces(todayIso());
+  const others: Record<string, Workspace> = { ...s.others };
+  for (const [id, ws] of Object.entries(gen)) if (id !== s.activeId && !others[id]) others[id] = ws;
+  const standard = <T extends { business: Business }>(w: T): T => ({ ...w, business: { ...w.business, settings: { ...w.business.settings, pdfTemplate: 'Standard' as const } } });
+  const upgraded = Object.fromEntries(Object.entries(others).map(([id, w]) => [id, standard(w)]));
+  const known = WORKSPACE_ORDER.filter((id) => id === s.activeId || upgraded[id]);
+  const extra = Object.keys(upgraded).filter((id) => !known.includes(id));
+  return { ...standard(s), others: upgraded, workspaceOrder: [...known, ...extra], ownerId: s.mode === 'owner' ? s.activeId : OWNER_ID };
+}
 
 /** Old/unknown saved data is replaced by a fresh seed rather than risking a broken app. */
 export function migrateState(persisted: unknown, version: number): AppData {
@@ -91,11 +114,12 @@ export function migrateState(persisted: unknown, version: number): AppData {
   if (!usable) return freshAll();
   let s = p as AppData;
   if (version === SCHEMA_VERSION) return s;
+  if (version < 1 || version > 3) return freshAll();
   // v1 -> v2 added invoice events and the demo prospect.
   if (version === 1) s = { ...s, events: [], prospect: { name: '', phone: '' } };
   // v2 -> v3 added the linked client businesses and the owner/CA mode; the owner's own data carries over.
-  if (version === 1 || version === 2) return { ...s, activeId: s.business.id, others: generateClientWorkspaces(todayIso()), mode: 'owner' };
-  return freshAll();
+  if (version <= 2) s = { ...s, activeId: s.business.id, others: generateClientWorkspaces(todayIso()), mode: 'owner' };
+  return upgradeToV4(s);
 }
 
 const uid = (p: string) => `${p}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
@@ -196,9 +220,17 @@ export const useApp = create<AppState>()(
         return cn;
       },
       enterCa: () => set({ mode: 'ca' }),
-      enterOwner: () => {
-        get().switchWorkspace(OWNER_ID);
+      enterOwner: (id) => {
+        get().switchWorkspace(id ?? get().ownerId ?? OWNER_ID);
         set({ mode: 'owner' });
+      },
+      addBusiness: (ws) => {
+        const s = get();
+        const id = ws.business.id;
+        if (id === s.activeId || s.others[id]) throw new Error('A business with this id already exists');
+        set((st) => ({ others: { ...st.others, [id]: ws }, workspaceOrder: [...st.workspaceOrder, id] }));
+        get().log('add-business', 'business', ws.business.tradeName);
+        return id;
       },
       switchWorkspace: (id) =>
         set((s) => {
@@ -207,7 +239,7 @@ export const useApp = create<AppState>()(
           if (!target) throw new Error(`Unknown business ${id}`);
           const others = { ...s.others, [s.activeId]: pickWorkspace(s) };
           delete others[id];
-          return { ...target, activeId: id, others };
+          return { ...target, activeId: id, others, ownerId: s.mode === 'owner' ? id : s.ownerId };
         }),
       updateBusiness: (b) => set((s) => ({ business: { ...s.business, ...b } })),
       resetDemo: () => set((s) => ({ ...freshAll(), mode: s.mode, prospect: s.prospect })), // the prospect and the view mode survive a reset
@@ -220,7 +252,7 @@ export const useApp = create<AppState>()(
       migrate: (persisted, version) => migrateState(persisted, version) as unknown as AppState,
       partialize: (s) => ({
         business: s.business, customers: s.customers, items: s.items, invoices: s.invoices, payments: s.payments,
-        creditNotes: s.creditNotes, counters: s.counters, auditLog: s.auditLog, events: s.events, prospect: s.prospect, generatedFor: s.generatedFor, activeId: s.activeId, others: s.others, mode: s.mode,
+        creditNotes: s.creditNotes, counters: s.counters, auditLog: s.auditLog, events: s.events, prospect: s.prospect, generatedFor: s.generatedFor, activeId: s.activeId, others: s.others, mode: s.mode, workspaceOrder: s.workspaceOrder, ownerId: s.ownerId,
       }) as unknown as AppState,
     },
   ),

@@ -12,6 +12,25 @@ export interface LineInput {
   ratePaise: Paise;
   discount: Discount;
   gstRate: number; // percent, e.g. 18
+  // Optional trade-format details (shown under the description on the invoice).
+  partNo?: string;
+  grade?: string;
+  size?: string;
+  batch?: string;
+  /** 'charge' = loading, freight, transport etc.; printed in the totals block, taxed like any other line. */
+  kind?: 'item' | 'charge';
+}
+
+/** Transport and reference details printed in the invoice header grid. All optional. */
+export interface InvoiceMeta {
+  paymentTerms?: string; // "30 days", "Due on receipt"
+  challanNo?: string; challanDate?: string;
+  ewayBill?: string; vehicleNo?: string; lrNo?: string; lrDate?: string; transporter?: string;
+  brokerName?: string; brokerMobile?: string;
+  buyerOrderNo?: string; buyerOrderDate?: string;
+  referenceNo?: string; otherReferences?: string;
+  dispatchDocNo?: string; dispatchedThrough?: string; destination?: string; termsOfDelivery?: string;
+  contactPerson?: string;
 }
 export interface LineResult {
   gross: Paise; discount: Paise; taxable: Paise;
@@ -46,6 +65,9 @@ export interface Invoice {
   placeOfSupply: string; // state code
   shipToStateCode?: string;
   shipToAddress?: string;
+  shipToName?: string; // consignee name when different from the buyer
+  shipToGstin?: string;
+  meta?: InvoiceMeta;
   reverseCharge: boolean;
   lines: LineInput[];
   totals: InvoiceTotals;

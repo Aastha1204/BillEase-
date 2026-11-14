@@ -45,6 +45,18 @@ Settings, then **Bank and UPI**, then **UPI ID (VPA)** (for example `shop@yourba
 - Use a business/merchant UPI ID in production. Some UPI apps may warn about or block prefilled amounts for personal UPI IDs.
 - **Demo watermark under QR** prints "DEMO" under the QR; switch it off for real invoices.
 
+## Add a new business
+
+Three ways in, all open the same form: on the landing page click **Enter as Business Owner** then **Add a new business**; in the top bar open the business switcher and pick **＋ Add new business…**; or in the CA view click **Add business**. Enter the GSTIN (checked live: format, checksum, state, PAN), address, series prefix, bank and UPI details. Tick "Start with a few fictional items and customers" to create your first invoice straight away.
+
+A new business is its own set of books (customers, items, invoices, numbering). It is linked to the CA list automatically, so it appears in the CA view and in "Download all client packs" without any extra step. Note: **Reset demo data** restores the original demo businesses, so businesses you added are removed by a reset.
+
+## The invoice format
+
+The default **Standard** template follows the usual Indian trade invoice: supplier block (GSTIN, PAN, CIN, state and code), consignee (ship to) and buyer (bill to) blocks, a reference grid (delivery challan, buyer's order, dispatch, vehicle, LR, e-way bill, transporter, broker, payment terms), an item grid with part no., batch, grade, size, HSN/SAC, quantity, UOM, rate, discount and per-line GST, charges (loading, freight, transport) in the totals block, an HSN-wise tax summary, amount and tax in words, terms and conditions, declaration, bank details with UPI QR, signatures and a receiver's stamp box. Fill the extra details in the builder under **Transport and references**, the line's **More details** arrow, and the **Charges** card. Company-level text (CIN, bank branch, terms, declaration, e-invoice block) lives in Settings, **Invoice format details**. Classic, Modern and Minimal remain available.
+
+The optional e-invoice block prints an IRN, Ack No. and QR as **demo values only**; nothing is registered on the e-invoice portal.
+
 ## Switch to the CA view
 
 Use the **Owner | CA** toggle in the top bar (or "Enter as CA" on the landing page). The whole app is re-branded as *Kalyan Tax Associates* (fictional). The Clients screen lists four linked businesses; **Open books** switches the whole app to that business, and **Download all client packs (.zip)** gives one workbook per client. Businesses are stored as separate workspaces, so data never mixes.

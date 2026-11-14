@@ -3,6 +3,7 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Briefcase, Receipt, Store } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { BusinessPicker } from '@/components/business/BusinessPicker';
 import { HeroFallback } from '@/components/landing/HeroFallback';
 import { webglAvailable } from '@/components/three/textures';
 import { heroData } from '@/lib/heroData';
@@ -30,7 +31,9 @@ export default function Landing() {
     setMode(threeD && !reduced && webglAvailable() ? '3d' : 'css');
   }, [ready, threeD]);
 
-  const go = (ca: boolean) => { if (ca) { enterCa(); router.push('/ca'); } else { enterOwner(); router.push('/dashboard'); } };
+  const [picking, setPicking] = useState(false);
+  const goCa = () => { enterCa(); router.push('/ca'); };
+  const openAs = (id: string) => { enterOwner(id); router.push('/dashboard'); };
 
   return (
     <main className="relative min-h-screen overflow-hidden" style={{ background: 'radial-gradient(1200px 600px at 75% 30%, rgba(99,102,241,.22), transparent 60%), radial-gradient(900px 500px at 20% 80%, rgba(245,181,68,.12), transparent 60%), #0B1220' }}>
@@ -40,9 +43,9 @@ export default function Landing() {
           <h1 className="text-4xl font-extrabold leading-tight tracking-tight sm:text-5xl">A correct GST invoice, <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(135deg,#F5B544,#FF8A3D)' }}>in under a minute.</span></h1>
           <p className="max-w-xl text-base text-mute sm:text-lg" data-testid="pitch">{PITCH}</p>
           <div className="flex flex-wrap gap-3">
-            <button onClick={() => go(false)} disabled={!ready} data-testid="enter-owner"
+            <button onClick={() => setPicking(true)} disabled={!ready} data-testid="enter-owner"
               className="btn-primary inline-flex items-center gap-2 rounded-xl px-5 py-3 text-base shadow-lg shadow-amber-500/20 disabled:opacity-60"><Store size={18} /> Enter as Business Owner</button>
-            <button onClick={() => go(true)} disabled={!ready} data-testid="enter-ca"
+            <button onClick={goCa} disabled={!ready} data-testid="enter-ca"
               className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/5 px-5 py-3 text-base font-semibold hover:bg-white/10 disabled:opacity-60"><Briefcase size={18} /> Enter as CA (white-label)</button>
           </div>
           <p className="text-xs text-mute">No sign-in. Demo data only; every business, customer and number is fictional.</p>
@@ -52,6 +55,7 @@ export default function Landing() {
           {mode === 'css' && <HeroFallback data={data} />}
         </section>
       </div>
+      {ready && <BusinessPicker open={picking} onClose={() => setPicking(false)} onPick={openAs} />}
       <footer className="absolute inset-x-0 bottom-3 text-center text-xs text-mute">Powered by Neovia AI</footer>
     </main>
   );
